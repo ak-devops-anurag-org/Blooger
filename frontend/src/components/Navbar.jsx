@@ -6,7 +6,7 @@ function Navbar() {
     <nav className="navbar">
       <div className="navbar-inner">
         <Link to="/" className="navbar-logo">
-          <span>🛤️</span> Jerney
+          <span>🛤️</span> blooger
         </Link>
         <div className="navbar-actions">
           <Link to="/create" className="btn btn-primary">

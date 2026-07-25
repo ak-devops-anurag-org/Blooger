@@ -1,7 +1,7 @@
 {
-  "name": "jerney-backend",
+  "name": "blooger-backend",
   "version": "1.0.0",
-  "description": "Jerney Blog Platform - Backend API",
+  "description": "blooger Blog Platform - Backend API",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",

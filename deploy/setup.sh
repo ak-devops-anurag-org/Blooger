@@ -1,12 +1,12 @@
 #!/bin/bash
 # ============================================
-# Jerney Blog Platform - EC2 Setup Script
+# blooger Blog Platform - EC2 Setup Script
 # Run this script on a fresh Ubuntu EC2 instance
 # ============================================
 
 set -e
 
-echo "🛤️  Setting up Jerney Blog Platform..."
+echo "🛤️  Setting up blooger Blog Platform..."
 echo "==========================================="
 
 # --- Update system ---
@@ -36,38 +36,38 @@ sudo npm install -g pm2
 # --- Configure PostgreSQL ---
 echo "🗄️  Configuring PostgreSQL..."
 sudo -u postgres psql <<EOF
-CREATE USER jerney_user WITH PASSWORD 'jerney_pass_2026';
-CREATE DATABASE jerney_db OWNER jerney_user;
-GRANT ALL PRIVILEGES ON DATABASE jerney_db TO jerney_user;
-\c jerney_db
-GRANT ALL ON SCHEMA public TO jerney_user;
+CREATE USER blooger_user WITH PASSWORD 'blooger_pass_2026';
+CREATE DATABASE blooger_db OWNER blooger_user;
+GRANT ALL PRIVILEGES ON DATABASE blooger_db TO blooger_user;
+\c blooger_db
+GRANT ALL ON SCHEMA public TO blooger_user;
 EOF
 
 echo "✅ PostgreSQL configured"
 
 # --- Set up project directory ---
 echo "📁 Setting up project..."
-sudo mkdir -p /var/www/jerney
-sudo chown -R $USER:$USER /var/www/jerney
+sudo mkdir -p /var/www/blooger
+sudo chown -R $USER:$USER /var/www/blooger
 
-# Copy project files (assumes you've transferred them to ~/Jerney)
-cp -r ~/Jerney/* /var/www/jerney/
+# Copy project files (assumes you've transferred them to ~/blooger)
+cp -r ~/blooger/* /var/www/blooger/
 
 # --- Install backend dependencies ---
 echo "📦 Installing backend dependencies..."
-cd /var/www/jerney/backend
+cd /var/www/blooger/backend
 npm install --production
 
 # --- Build frontend ---
 echo "🔨 Building frontend..."
-cd /var/www/jerney/frontend
+cd /var/www/blooger/frontend
 npm install
 npm run build
 
 # --- Configure Nginx ---
 echo "🌐 Configuring Nginx..."
-sudo cp /var/www/jerney/deploy/jerney-nginx.conf /etc/nginx/sites-available/jerney
-sudo ln -sf /etc/nginx/sites-available/jerney /etc/nginx/sites-enabled/jerney
+sudo cp /var/www/blooger/deploy/blooger-nginx.conf /etc/nginx/sites-available/blooger
+sudo ln -sf /etc/nginx/sites-available/blooger /etc/nginx/sites-enabled/blooger
 sudo rm -f /etc/nginx/sites-enabled/default
 sudo nginx -t
 sudo systemctl restart nginx
@@ -75,14 +75,14 @@ sudo systemctl enable nginx
 
 # --- Start backend with PM2 ---
 echo "🚀 Starting backend with PM2..."
-cd /var/www/jerney/backend
-pm2 start src/index.js --name jerney-backend
+cd /var/www/blooger/backend
+pm2 start src/index.js --name blooger-backend
 pm2 save
 pm2 startup systemd -u $USER --hp /home/$USER | tail -1 | sudo bash
 
 echo ""
 echo "==========================================="
-echo "🎉 Jerney is now live!"
+echo "🎉 blooger is now live!"
 echo "==========================================="
 echo ""
 echo "Access your blog at: http://$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || echo '<your-ec2-public-ip>')"

@@ -2,7 +2,8 @@
 FROM node:20-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json* ./
-RUN npm ci --only=production && npm cache clean --force
+RUN npm ci --omit=dev && npm cache clean --force
+# RUN npm ci --only=production && npm cache clean --force
 
 # ---- Production stage ----
 FROM node:20-alpine AS production
@@ -24,7 +25,7 @@ RUN chown -R appuser:appgroup /app
 
 USER appuser
 
-EXPOSE 5000
+EXPOSE 8080
 
 # Security: use dumb-init for proper signal handling (PID 1 problem)
 ENTRYPOINT ["dumb-init", "--"]

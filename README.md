@@ -1,4 +1,4 @@
-# 🛤️ Jerney — Blog Platform
+# 🛤️ blooger — Blog Platform
 
 A Gen-Z vibe blog platform built with a 3-tier architecture — React frontend, Node.js backend, and PostgreSQL database.
 
@@ -33,14 +33,14 @@ A Gen-Z vibe blog platform built with a 3-tier architecture — React frontend, 
 │   Frontend   │────▶│   Backend    │────▶│  PostgreSQL   │
 │   (React +   │◀────│  (Node.js +  │◀────│              │
 │    Nginx)    │     │   Express)   │     │              │
-│   Port 80    │     │  Port 5000   │     │  Port 5432   │
+│   Port 80    │     │  Port 8080   │     │  Port 5432   │
 └──────────────┘     └──────────────┘     └──────────────┘
 ```
 
 ## 📁 Project Structure
 
 ```
-Jerney/
+blooger/
 ├── frontend/                # React (Vite) frontend
 │   ├── src/                 # React components & pages
 │   ├── nginx.conf           # Nginx config for serving the app
@@ -50,7 +50,7 @@ Jerney/
 │   └── package.json
 ├── deploy/                  # EC2 deployment scripts
 │   ├── setup.sh             # One-click EC2 setup script
-│   └── jerney-nginx.conf    # Nginx reverse proxy config
+│   └── blooger-nginx.conf    # Nginx reverse proxy config
 └── README.md
 ```
 
@@ -68,7 +68,7 @@ Jerney/
 
 ```bash
 # From your local machine
-scp -r -i your-key.pem ./Jerney ubuntu@<EC2_PUBLIC_IP>:~/Jerney
+scp -r -i your-key.pem ./blooger ubuntu@<EC2_PUBLIC_IP>:~/blooger
 ```
 
 ### Step 2: SSH into the Instance
@@ -82,7 +82,7 @@ ssh -i your-key.pem ubuntu@<EC2_PUBLIC_IP>
 The `deploy/setup.sh` script installs everything and configures the app automatically:
 
 ```bash
-cd ~/Jerney
+cd ~/blooger
 chmod +x deploy/setup.sh
 ./deploy/setup.sh
 ```
@@ -111,7 +111,7 @@ pm2 status                          # Check backend status
 pm2 logs                            # View backend logs
 pm2 restart all                     # Restart backend
 sudo systemctl restart nginx        # Restart Nginx
-sudo -u postgres psql -d jerney_db  # Connect to database
+sudo -u postgres psql -d blooger_db  # Connect to database
 ```
 
 ---
@@ -132,10 +132,10 @@ npm install
 # Create a .env file (or export these variables)
 export DB_HOST=localhost
 export DB_PORT=5432
-export DB_USER=jerney_user
-export DB_PASSWORD=jerney_pass_2026
-export DB_NAME=jerney_db
-export PORT=5000
+export DB_USER=blooger_user
+export DB_PASSWORD=blooger_pass_2026
+export DB_NAME=blooger_db
+export PORT=8080
 
 npm start
 ```
@@ -148,7 +148,7 @@ npm install
 npm run dev
 ```
 
-The Vite dev server starts on `http://localhost:3000` and proxies `/api` requests to the backend at `http://localhost:5000`.
+The Vite dev server starts on `http://localhost:3000` and proxies `/api` requests to the backend at `http://localhost:8080`.
 
 ---
 
@@ -177,4 +177,4 @@ The Vite dev server starts on `http://localhost:3000` and proxies `/api` request
 
 ---
 
-Built with 💜 by the Jerney team. No cap, this blog platform hits different. 🛤️
+Built with 💜 by the blooger team. No cap, this blog platform hits different. 🛤️
