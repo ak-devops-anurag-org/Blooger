@@ -29,7 +29,7 @@ services:
 
   # ---- Backend API ----
   backend:
-    image: blooger-backend:latest
+    image: akdevanurag/blooger:backend 
     # use build if you want to build the image from source instead of using a pre-built image
     # build:
     #   context: ./backend
@@ -64,14 +64,14 @@ services:
 
   # ---- Frontend (Nginx + React) ----
   frontend:
-    image: blooger-frontend:latest
+    image: akdevanurag/blooger:frontend
     # build:
     #   context: ./frontend
     #   dockerfile: Dockerfile
     container_name: blooger-frontend
     restart: unless-stopped
     ports:
-      - "80:3000"
+      - "3000:80"
     depends_on:
       - backend
     security_opt:
