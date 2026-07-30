@@ -1,0 +1,84 @@
+# ---- Frontend Deployment ----
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: blooger-frontend
+  namespace: blooger
+  labels:
+    app.kubernetes.io/name: blooger-frontend
+    app.kubernetes.io/part-of: blooger
+    app.kubernetes.io/component: frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: blooger-frontend
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: blooger-frontend
+        app.kubernetes.io/part-of: blooger
+        app.kubernetes.io/component: frontend
+    spec:
+      automountServiceAccountToken: false
+      # tolerations:
+      #   - key: "karpenter.sh/disrupted"
+      #     operator: "Exists"
+      #     effect: "NoSchedule"
+      containers:
+        - name: frontend
+          image: akdevanurag/blooger:frontend
+          # image: ghcr.io/iam-veeramalla/blooger/blooger-frontend:75da1da
+          ports:
+            - containerPort: 80
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false # Nginx needs write for cache/pid
+            runAsNonRoot: true
+            runAsUser: 101 # nginx user UID in alpine
+            capabilities:
+              drop:
+                - ALL
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 3
+            periodSeconds: 5
+
+---
+# ---- Frontend Service (NodePort — for access via port-forward or node IP) ----
+# NOTE: Changed from LoadBalancer because this AWS account does not support
+# creating load balancers. Use `kubectl port-forward svc/blooger-frontend 3000:80 -n blooger`
+# to access the frontend locally.
+apiVersion: v1
+kind: Service
+metadata:
+  name: blooger-frontend
+  namespace: blooger
+  labels:
+    app.kubernetes.io/name: blooger-frontend
+    app.kubernetes.io/part-of: blooger
+    app.kubernetes.io/component: frontend
+spec:
+  type: NodePort
+  selector:
+    app.kubernetes.io/name: blooger-frontend
+  ports:
+    - port: 80           # service port
+      targetPort: 80     # container port
+      protocol: TCP

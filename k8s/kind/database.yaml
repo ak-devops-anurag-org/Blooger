@@ -1,0 +1,91 @@
+# ---- PostgreSQL Deployment ----
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: blooger-db
+  namespace: blooger
+  labels:
+    app.kubernetes.io/name: blooger-db
+    app.kubernetes.io/part-of: blooger
+    app.kubernetes.io/component: database
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate # Required for RWO volumes
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: blooger-db
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: blooger-db
+        app.kubernetes.io/part-of: blooger
+        app.kubernetes.io/component: database
+    spec:
+      # Security: don't automount service account token (DB doesn't need K8s API)
+      automountServiceAccountToken: false
+      # tolerations:
+      #   - key: "karpenter.sh/disrupted"
+      #     operator: "Exists"
+      #     effect: "NoSchedule" 
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+              protocol: TCP
+          envFrom:
+            - secretRef:
+                name: blooger-db-secret
+          volumeMounts:
+            - name: db-storage
+              mountPath: /var/lib/postgresql/data
+              subPath: pgdata
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          # Security context
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false # Postgres needs write access
+            runAsNonRoot: false            # Postgres image runs initdb as root then drops
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "blooger_user", "-d", "blooger_db"]
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "blooger_user", "-d", "blooger_db"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+      volumes:
+        - name: db-storage
+          persistentVolumeClaim:
+            claimName: blooger-db-pvc
+
+---
+# ---- PostgreSQL Service (ClusterIP — internal only) ----
+apiVersion: v1
+kind: Service
+metadata:
+  name: blooger-db
+  namespace: blooger
+  labels:
+    app.kubernetes.io/name: blooger-db
+    app.kubernetes.io/part-of: blooger
+    app.kubernetes.io/component: database
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: blooger-db
+  ports:
+    - port: 5432                # service port 
+      targetPort: 5432          # container port
+      protocol: TCP

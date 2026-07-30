@@ -1,0 +1,15 @@
+# command to get the kind cluster
+# kind get clusters
+
+# command to create a kind cluster using this config file
+# kind create cluster --config k8s/kind-k8s-cluster.yaml --name k8s
+
+# command to delete the kind cluster
+# kind delete cluster --name k8s
+
+
+# kind cluster with one control plane node and one worker node
+kind: Cluster
+nodes:
+  - role: control-plane
+  - role: worker 

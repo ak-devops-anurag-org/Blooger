@@ -20,5 +20,10 @@ Thumbs.db
 # cicd
 .github
 
+*.tgz
+.cr-release-packages/
+.cr-index/
+.DS_Store
+
 
 /progress and tmp

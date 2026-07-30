@@ -102,7 +102,7 @@ function CreatePost() {
             {submitting ? 'Posting...' : 'Post it 🚀'}
           </button>
           <Link to="/" className="btn btn-secondary">
-            Nvm, cancel
+            Cancel
           </Link>
         </div>
       </form>

@@ -1,0 +1,16 @@
+# ---- PersistentVolumeClaim for PostgreSQL (EBS) ----
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: blooger-db-pvc
+  namespace: blooger
+  labels:
+    app.kubernetes.io/part-of: blooger
+    app.kubernetes.io/component: database
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: standard
+  resources:
+    requests:
+      storage: 1Gi

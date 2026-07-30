@@ -1,0 +1,7 @@
+# ---- Namespace ----
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: blooger
+  labels:
+    app.kubernetes.io/part-of: blooger
