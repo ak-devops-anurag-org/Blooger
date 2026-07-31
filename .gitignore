@@ -18,7 +18,7 @@ terraform/crash.log
 Thumbs.db
 
 # cicd
-.github
+.github/workflows/sim-security-scan.yml
 
 *.tgz
 .cr-release-packages/
