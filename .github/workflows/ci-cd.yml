@@ -103,7 +103,7 @@ jobs:
 
 
   # ==============================================================
-  # STAGE 3: Container Image Scanning (Trivy)
+  # STAGE 4: Container Image Scanning (Trivy)
   # ==============================================================
   image-scan:
     name: "🔬 Scan ${{ matrix.component }} Image"
