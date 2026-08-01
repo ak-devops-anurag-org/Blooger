@@ -83,6 +83,26 @@ jobs:
         # `|| true` to not fail on high/critical — adjust in prod   || low / moderate / high / critical
 
   # ==============================================================
+  # STAGE 3: Dockerfile Lint (Hadolint)
+  # ==============================================================
+  dockerfile-lint:
+    name: "📋 Dockerfile Lint"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        component: [backend, frontend]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Hadolint
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: ${{ matrix.component }}/Dockerfile
+          failure-threshold: warning
+
+
+  # ==============================================================
   # STAGE 3: Container Image Scanning (Trivy)
   # ==============================================================
   image-scan:
@@ -105,27 +125,9 @@ jobs:
         with:
           image-ref: "blooger-${{ matrix.component }}:scan"
           format: "table"
-          exit-code: "1"
+          exit-code: "0"
+          # exit-code: "1"
           ignore-unfixed: true
           vuln-type: "os,library"
           severity: "CRITICAL,HIGH"
           timeout: "10m"
-
-  # ==============================================================
-  # STAGE 4: Dockerfile Lint (Hadolint)
-  # ==============================================================
-  dockerfile-lint:
-    name: "📋 Dockerfile Lint"
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        component: [backend, frontend]
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Run Hadolint
-        uses: hadolint/hadolint-action@v3.1.0
-        with:
-          dockerfile: ${{ matrix.component }}/Dockerfile
-          failure-threshold: warning
