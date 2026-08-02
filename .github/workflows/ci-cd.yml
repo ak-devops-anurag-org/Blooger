@@ -1,8 +1,8 @@
 # ==============================================================
-# Jerney - DevSecOps CI/CD Pipeline
+# Blooger - DevSecOps CI/CD Pipeline
 # ==============================================================
 # Triggers on every push and pull request.
-# Stages: Lint → SCA → Build → Image Scan → IaC Scan → Deploy Manifest Update
+# Stages: Lint -> SCA -> Dockerfile Lint -> Build+Scan+Push
 # ==============================================================
 
 name: Blooger DevSecOps Pipeline
@@ -101,33 +101,146 @@ jobs:
           dockerfile: ${{ matrix.component }}/Dockerfile
           failure-threshold: warning
 
-
   # ==============================================================
-  # STAGE 4: Container Image Scanning (Trivy)
+  # STAGE 4: Build -> Scan -> Push Container Images
   # ==============================================================
-  image-scan:
-    name: "🔬 Scan ${{ matrix.component }} Image"
+  # Design decision: build, scan, and push live in ONE job (not three
+  # separate jobs) on purpose. Docker layers/images do not carry over
+  # between jobs unless you explicitly cache or upload/download them as
+  # artifacts — that's slow and wasteful for something as large as a
+  # container image. Keeping them in one job means:
+  #   1. We build the image ONCE.
+  #   2. We scan that exact image (not a rebuilt copy).
+  #   3. We push that exact scanned image — no drift between what was
+  #      scanned and what actually ships.
+  # Steps within a job always run sequentially, so "scan gates push"
+  # falls out naturally without needing cross-job artifact passing.
+  # ==============================================================
+  build-scan-push:
+    name: "🐳 Build, Scan & Push ${{ matrix.component }}"
     runs-on: ubuntu-latest
-    # needs: sca
+    # For now these run independent of lint/sca (matches your original
+    # "run everything in parallel" setup for a portfolio project).
+    # In a real prod pipeline you'd normally gate this behind the
+    # earlier stages so a bad build doesn't burn registry storage:
+    # needs: [lint, sca, dockerfile-lint]
+    permissions:
+      contents: read
+      packages: write # Needed to push to GHCR
     strategy:
       matrix:
         component: [backend, frontend]
+    outputs:
+      image_tag: ${{ steps.meta.outputs.version }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Build image for scanning
-        run: |
-          docker build -t blooger-${{ matrix.component }}:scan ./${{ matrix.component }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}/blooger-${{ matrix.component }}
+          tags: |
+            type=sha,prefix=
+            type=ref,event=branch
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      # ----------------------------------------------------------
+      # Build the image and LOAD it into the local Docker daemon
+      # (push: false, load: true). This gives Trivy something real
+      # to scan, tagged with the exact tags we intend to push,
+      # WITHOUT publishing it to GHCR yet.
+      # ----------------------------------------------------------
+      - name: Build image (load locally for scanning)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./${{ matrix.component }}
+          file: ./${{ matrix.component }}/Dockerfile
+          push: false
+          load: true
+          # Add a simple, predictable local-only tag alongside the real
+          # registry tags from metadata-action. Trivy scans THIS tag
+          # (simpler/more reliable than parsing a multiline tags string) —
+          # it's the same image ID either way, just referenced differently.
+          tags: |
+            ${{ steps.meta.outputs.tags }}
+            blooger-${{ matrix.component }}:scan
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # ----------------------------------------------------------
+      # STAGE 4b: Container Image Scanning (Trivy)
+      # Scans the image we just built and loaded above.
+      # ----------------------------------------------------------
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "blooger-${{ matrix.component }}:scan"
           format: "table"
           exit-code: "0"
-          # exit-code: "1"
           ignore-unfixed: true
           vuln-type: "os,library"
           severity: "CRITICAL,HIGH"
           timeout: "10m"
+
+      # ----------------------------------------------------------
+      # PRODUCTION GATE (commented out for this portfolio project):
+      # Uncomment to actually STOP the pipeline when Trivy finds
+      # CRITICAL/HIGH vulnerabilities with a known fix available.
+      # This is the standard "shift-left, but still gate at the door"
+      # pattern — SCA/Lint catch things early, but the image scan is
+      # the last checkpoint before anything reaches the registry.
+      #
+      # - name: Run Trivy (blocking mode)
+      #   uses: aquasecurity/trivy-action@master
+      #   with:
+      #     image-ref: "blooger-${{ matrix.component }}:scan"
+      #     format: "table"
+      #     exit-code: "1"          # <-- non-zero exit fails the job/pipeline
+      #     ignore-unfixed: true    # only fail on vulns that HAVE a fix
+      #     vuln-type: "os,library"
+      #     severity: "CRITICAL,HIGH"
+      #     timeout: "10m"
+      #
+      # Notes for when you flip this on later:
+      #   - ignore-unfixed: true means Trivy won't fail the build on
+      #     CVEs with no patch yet (nothing actionable to do about those
+      #     right now anyway) — avoids permanently red pipelines.
+      #   - You'll also want a documented exception process (.trivyignore
+      #     with a comment + expiry date) for CVEs the team has
+      #     consciously accepted risk on, so people don't just quietly
+      #     bypass this by lowering severity thresholds.
+      #   - Consider uploading results as a SARIF file to GitHub's
+      #     Security tab instead of/alongside "table" format, so findings
+      #     show up in the repo's Security > Code scanning alerts UI:
+      #       format: "sarif"
+      #       output: "trivy-results.sarif"
+      #     then a follow-up step: github/codeql-action/upload-sarif@v3
+      # ----------------------------------------------------------
+
+      # ----------------------------------------------------------
+      # STAGE 4c: Push (only after the scan step above has run).
+      # Because push: false + load: true was used earlier, the image
+      # is already built and sitting in the local Docker daemon with
+      # all the correct tags — so this just pushes those exact tags,
+      # it does NOT trigger a rebuild.
+      # ----------------------------------------------------------
+      - name: Push image to GHCR
+        if: github.event_name != 'pull_request'
+        run: |
+          for tag in $(echo "${{ steps.meta.outputs.tags }}"); do
+            echo "Pushing $tag"
+            docker push "$tag"
+          done
