@@ -12,19 +12,16 @@ permissions:
 
 jobs:
   update-gitops:
-
     if: >
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.head_branch == 'main'
 
     runs-on: ubuntu-latest
-
     steps:
 
       ############################################################
       # Clone GitOps Repository
       ############################################################
-
       - name: Checkout GitOps Repository
         uses: actions/checkout@v4
         with:
@@ -35,12 +32,10 @@ jobs:
       ############################################################
       # Install yq
       ############################################################
-
       - name: Install yq
         run: |
           sudo wget -qO /usr/local/bin/yq \
           https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
-
           sudo chmod +x /usr/local/bin/yq
 
       ############################################################
@@ -49,15 +44,23 @@ jobs:
 
       - name: Update Image Tags
         run: |
-
-          IMAGE_TAG=${{ github.event.workflow_run.head_sha }}
-          IMAGE_TAG=${IMAGE_TAG::7}
-
+          IMAGE_TAG="${{ github.event.workflow_run.head_sha }}"
+          IMAGE_TAG="${IMAGE_TAG:0:7}"
+          export IMAGE_TAG
+          echo "Image tag: ${IMAGE_TAG}"
           cd gitops
-
           yq -i '.backend.image.tag = strenv(IMAGE_TAG)' charts/blooger/values.yaml
-
           yq -i '.frontend.image.tag = strenv(IMAGE_TAG)' charts/blooger/values.yaml
+          echo "Updated values.yaml:"
+          cat charts/blooger/values.yaml
+
+      # - name: Update Image Tags
+      #   run: |
+      #     IMAGE_TAG=${{ github.event.workflow_run.head_sha }}
+      #     IMAGE_TAG=${IMAGE_TAG::7}
+      #     cd gitops
+      #     yq -i '.backend.image.tag = strenv(IMAGE_TAG)' charts/blooger/values.yaml
+      #     yq -i '.frontend.image.tag = strenv(IMAGE_TAG)' charts/blooger/values.yaml
 
       ############################################################
       # Create Pull Request
@@ -67,27 +70,17 @@ jobs:
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.GITOPS_PAT }}
-
           path: gitops
-
           commit-message: |
             ci: update Blooger images to ${{ github.event.workflow_run.head_sha }}
-
           title: |
             Update Blooger Images
-
           body: |
             ## Automated Image Update
-
             This PR was created automatically by GitHub Actions.
-
             **Image Tag**
-
             `${{ github.event.workflow_run.head_sha }}`
-
           branch: |
             ci/update-images
-
           delete-branch: true
-
           base: main
