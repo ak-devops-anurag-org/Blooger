@@ -9,10 +9,10 @@
 ## Folder structure
 
 ```
-blooger-helm/
+blooger/
 ├── .github/
 │   └── workflows/
-│       └── release.yml          ← auto-publishes to GHCR on push
+│       └── ci.yml               ← CI Pipeline 
 ├── charts/
 │   └── blooger/                 ← chart root (Chart.yaml lives here)
 │       ├── Chart.yaml
@@ -31,8 +31,10 @@ blooger-helm/
 │           ├── frontend-deployment.yaml
 │           ├── frontend-service.yaml
 │           └── frontend-ingress.yaml
-├── helm-readme.md               ← this file
-├── README.md                    ← full user-facing docs
+├── backend                      ← node js server - backend 
+├── frontend                     ← react js - fronted
+├── helm-readme.md               
+├── README.md                    
 └── .gitignore
 ```
 
